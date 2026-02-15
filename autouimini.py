@@ -1,4 +1,3 @@
-        # AutoUImini
 """
 AutoUI — Simple UI automation helper using pyautogui
 
