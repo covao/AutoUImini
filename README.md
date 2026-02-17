@@ -7,7 +7,7 @@
 - Application launching and window management
 
 ## Installation
-Download the source code pyauto_mini.py and import it in your Python project.
+Download the source code autouimini.py and import it in your Python project.
 
 ## Example Usage
 ```python
@@ -19,5 +19,6 @@ ui.typewrite("Hello, this is AutoUI Mini!")
 ui.log("Typed text in Notepad")
 ui.move_cursor(50,200, isswing=True)
 ```
+
 
 
