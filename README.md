@@ -12,9 +12,12 @@ Download the source code pyauto_mini.py and import it in your Python project.
 ## Example Usage
 ```python
 from pyauto_mini import autouimini
-auto_ui = autouimini.AutoUIMini()
-auto_ui.runapp("notepad")
-auto_ui.typewrite("Hello, this is AutoUI Mini!")
+ui = autouimini.autouimini()
+ui.runapp("notepad")
+ui.log("launched Notepad")
+ui.typewrite("Hello, this is AutoUI Mini!")
+ui.log("Typed text in Notepad")
+ui.move_cursor(50,200, isswing=True)
 ```
 
 

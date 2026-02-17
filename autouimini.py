@@ -1,27 +1,31 @@
 """
-AutoUI — Simple UI automation helper using pyautogui
-
-Class: autouimini
+AutoUIMini — Simple UI automation helper using pyautogui
 Methods:
-- sleep(t): Sleep for t seconds (adjusted by speed rate).
-- wait_imgdiff(x, y, width=40, height=40, timeout=5.0): Wait for image change in the specified region.
-- log(msg, key="Info"): Log a message with timestamp.
-- presskey(key1, key2="", key3=""): Press a key or combination of keys.
-- repeatkey(key, n): Press a key n times.
-- typewrite(text): Type text with delay.
-- runapp(appname): Launch an application by name and focus its window.
-- move_cursor(x, y): Move mouse cursor to (x, y).
-- swing(): Swing the mouse cursor left and right.
-- click(x, y): Move to (x, y) and click.
-- leftclick(x, y): Move to (x, y) and left-click.
-- set_clipboard(text): Set the system clipboard to the specified text.
-
+- `sleep(t)`: Sleep for a specified time adjusted by the speed rate.
+- `wait_imgdiff(x, y, width, height, timeout)`: Wait for a change in a specified screen region.
+- `log(msg, key)`: Log messages with timestamps.
+- `presskey(key1, key2, key3)`: Press one or more keys.
+- `repeatkey(key, n)`: Press a key multiple times.
+- `typewrite(text)`: Type text with a delay between keystrokes.
+- `runapp(appname, wait, width, height)`: Launch an application and optionally resize its window.
+- `move_cursor(x, y, isswing)`: Move the mouse cursor to specified coordinates with optional swinging.
+- `swing(swing_width)`: Swing the mouse cursor left and right.
+- `click(x, y, isswing)`: Click at specified coordinates with optional swinging.
+- `leftclick(x, y, isswing)`: Left click at specified coordinates with optional swinging.
+- Properties:
+- `t_rate`: Speed rate for adjusting timings.
+- `t_key`: Delay after key presses.
+- `t_short`: Short wait time.
+- `t_move`: Mouse move delay.
+- `app_timeout`: Timeout for launching applications.
+- `scale`: Coordinate scaling factor for converting logical coordinates to physical pixels.
 """
 
 import numpy as np  
 import time
 import sys
 import subprocess
+import ctypes
 
 import pyautogui
 import pygetwindow as gw
@@ -33,6 +37,7 @@ class autouimini:
         self.t_short = 0.3 # short wait
         self.t_move = 0.5 # mouse move delay
         self.app_timeout = 10.0 # app launch timeout
+        self.scale = 1.0 # DPI scaling factor
 
         pyautogui.FAILSAFE = True
         pyautogui.PAUSE = 0.1
@@ -83,7 +88,7 @@ class autouimini:
         pyautogui.typewrite(text, interval=self.t_key)
         self.sleep(self.t_short)
 
-    def runapp(self, appname: str, wait: float = 2.0) -> str:
+    def runapp(self, appname: str, wait: float = 2.0, width: int = None, height: int = None) -> str:
         old_windows = gw.getAllWindows()
 
         self.log(f"Opening {appname}...")
@@ -108,19 +113,34 @@ class autouimini:
                 # focus the new window
                 win = added[0]
                 win.activate()
-                #move window to (0,0)
+                # move window to (0,0)
                 win.moveTo(0, 0)
-                # Set fullscreen
-                win.maximize()
+                # If width/height provided, resize; otherwise maximize
+                try:
+                    if width and height:
+                        win.resizeTo(int(width), int(height))
+                    else:
+                        win.maximize()
+                except Exception:
+                    # Some window types may not support resizeTo; fall back to maximize
+                    try:
+                        win.maximize()
+                    except Exception:
+                        pass
                 self.sleep(self.t_short)
                 break
         if not added:
             return ""
         return added[0]
 
-    def move_cursor(self, x: int, y: int) -> None:
-        pyautogui.moveTo(x, y, duration=self.t_move)
+    def move_cursor(self, x: int, y: int, isswing: bool = False) -> None:
+        # Use self.scale to convert logical coordinates -> physical pixels
+        phys_x = int(round(x * self.scale))
+        phys_y = int(round(y * self.scale))
+        pyautogui.moveTo(phys_x, phys_y, duration=self.t_move)
         self.sleep(self.t_move)
+        if isswing:
+            self.swing()
 
     def swing(self, swing_width: int = 30) -> None:
         # Swing the mouse cursor left and right from its current position.
@@ -128,14 +148,22 @@ class autouimini:
         for dx in [-swing_width, swing_width, -swing_width, swing_width, 0]:
             pyautogui.moveTo(x + dx, y, duration= 0.2)
     
-    def click(self, x: int, y: int) -> None:
-        pyautogui.moveTo(x, y, duration=self.t_move)
-        pyautogui.click(x, y)
+    def click(self, x: int, y: int, isswing: bool = False) -> None:
+        # Click at logical coordinates (x,y) after applying self.scale.
+        phys_x = int(round(x * self.scale))
+        phys_y = int(round(y * self.scale))
+        if isswing:
+            self.swing()
+        pyautogui.click(phys_x, phys_y)
         self.sleep(self.t_key)
     
-    def leftclick(self, x: int, y: int) -> None:
-        self.sleep(self.t_move)
-        pyautogui.click(x, y, button='left')
+    def leftclick(self, x: int, y: int, isswing: bool = False) -> None:
+        # Left click at logical coordinates after applying self.scale.
+        phys_x = int(round(x * self.scale))
+        phys_y = int(round(y * self.scale))
+        if isswing:
+            self.swing()
+        pyautogui.click(phys_x, phys_y, button='left')
         self.sleep(self.t_key)
 
     def set_clipboard(self, text: str) -> None:
@@ -145,13 +173,13 @@ class autouimini:
 def main() -> None:
     # Demo: Open MS Paint, paste screenshot, resize it.
     ui = autouimini()
-
     # Capture the current screen to clipboard first
     ui.log("Capturing full screen to clipboard")
     # Press PrintScreen key
     ui.presskey("alt", "printscreen")
     # Then open MS Paint and paste
     ui.runapp("mspaint")
+    ui.move_cursor(490,990, isswing=True)
 
     # Resize image to 10x10 before pasting
     ui.log("Resize to 10x10")
